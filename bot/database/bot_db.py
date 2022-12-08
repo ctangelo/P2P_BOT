@@ -71,6 +71,7 @@ async def sql_add_buy_order(state):
 
 # read all orders from user
 async def sql_read_own_orders(message):
+    await bot.delete_message(message.from_user.id, message.message.message_id)
     cur.execute("""
                 SELECT *
                 FROM orders_data
