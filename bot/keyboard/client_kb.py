@@ -1,8 +1,8 @@
 from aiogram.types import ReplyKeyboardMarkup, ReplyKeyboardRemove, KeyboardButton, \
     InlineKeyboardButton, InlineKeyboardMarkup
 
-exchange_button = KeyboardButton(text="/P2P_Обмен")
-data_button = KeyboardButton(text="/Кошелек")
+exchange_button = KeyboardButton(text="🔁 P2P Обмен")
+data_button = KeyboardButton(text="💼 Кошелек")
 
 
 kb_client = ReplyKeyboardMarkup(resize_keyboard=True)
@@ -30,24 +30,24 @@ urlkb_3.add(inline_my_orders_button)
 
 urlkb_4 = InlineKeyboardMarkup(row_width=1)
 inline_add_buy_order_button = InlineKeyboardButton('🖋 Создать объявление о покупке', callback_data='add_buy_order')
-inline_see_sell_orders = InlineKeyboardButton('Посмотреть объявления на продажу', callback_data='check_sell_orders')
+inline_see_sell_orders = InlineKeyboardButton('Посмотреть объявления о покупке', callback_data='check_buy_orders')
 urlkb_4.row(inline_add_buy_order_button, inline_see_sell_orders)
 
 
 urlkb_5 = InlineKeyboardMarkup(row_width=1)
 inline_add_sell_order_button = InlineKeyboardButton('🖋 Создать объявление на продажу', callback_data='add_sell_order')
 inline_see_buy_orders = InlineKeyboardButton('Посмотреть объявления на продажу', callback_data='check_sell_orders')
-urlkb_5.row(inline_see_buy_orders, inline_add_sell_order_button)
+urlkb_5.row(inline_add_sell_order_button, inline_see_buy_orders)
 
 
 def gen_inline_kb_my_orders(data):
-    dict_orders = {1: 'Покупка', 2: 'Продажа'}
+    dict_orders = {1: 'Покупка', 0: 'Продажа'}
     urlkb_my_orders = InlineKeyboardMarkup(row_width=1)
     for i in data:
-        urlkb_my_orders.add(InlineKeyboardButton(f'{dict_orders[2]} {i[4]} VST за {i[3]} USDT', callback_data=i[0]))
+        urlkb_my_orders.add(InlineKeyboardButton(f'{dict_orders[i[2]]} {i[4]} VST за {i[3]} USDT',
+                                                 callback_data=f'sbuy {i[0]}'))
     return urlkb_my_orders
 
 
-urlkb_del = InlineKeyboardMarkup(row_width=1)
-inline_del_button = InlineKeyboardButton('Удалить', callback_data='delete_btn')
-urlkb_del.add(inline_del_button)
+
+

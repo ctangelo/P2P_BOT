@@ -1,8 +1,8 @@
 import psycopg2
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from dispatcher import bot, dp
 
 from bot.keyboard import client_kb
-from bot.keyboard.client_kb import urlkb, urlkb_2, urlkb_del
 
 
 # launch database
@@ -19,7 +19,11 @@ def sql_start():
 # add user info in database
 async def sql_add_data(state):
     async with state.proxy() as data:
-        cur.execute("INSERT INTO user_data VALUES (%s, %s, %s, %s)", tuple(data.values()))
+        cur.execute("""
+                    INSERT 
+                    INTO user_data 
+                    VALUES (%s, %s, %s, %s)
+                    """, tuple(data.values()))
         conn.commit()
 
 
@@ -30,11 +34,9 @@ async def sql_read_data(message):
                 FROM user_data 
                 WHERE user_id = %s
                 """, (message.from_user.id,))
-    one_line = cur.fetchall()
-    for ret in one_line:
-        await bot.send_message(message.from_user.id, f'*Имя: {ret[1]}\n\nVST-счет: {ret[2]}\n\nBinanceID: {ret[-1]}*',
-                               parse_mode="Markdown", reply_markup=urlkb)
-        conn.commit()
+    for ret in cur.fetchall():
+        return ret
+    conn.commit()
 
 
 # delete user info
@@ -52,15 +54,12 @@ async def is_user_id_in_data(message):
                 SELECT EXISTS (SELECT * from user_data WHERE user_id = %s)
                 """, (message.from_user.id,))
     for ret in cur.fetchone():
-        if ret:
-            await sql_read_data(message)
-        else:
-            await message.answer("Вы не добавили данные", reply_markup=urlkb_2)
+        return ret
     conn.commit()
 
 
 # add buy order to database
-async def sql_add_buy_order(state):
+async def sql_add_order(state):
     async with state.proxy() as data:
         cur.execute("""
                     INSERT INTO orders_data
@@ -80,6 +79,7 @@ async def sql_read_own_orders(message):
     data = cur.fetchall()
     await bot.send_message(message.from_user.id, 'Список ваших заявок: ',
                            reply_markup=client_kb.gen_inline_kb_my_orders(data))
+    conn.commit()
 
 
 # push on user's order button
@@ -90,7 +90,39 @@ async def order_push_button(callback):
                 SELECT *
                 FROM orders_data
                 WHERE order_id = %s
-                """, (callback.data, ))
+                """, (callback.data[4:],))
     order_info = cur.fetchone()
+
     await bot.send_message(callback.from_user.id, f'Заявка №{order_info[0]} на покупку {order_info[4]} VST '
-                                                  f'за {order_info[3]} USDT', reply_markup=urlkb_del)
+                                                  f'за {order_info[3]} USDT', reply_markup=InlineKeyboardMarkup().
+                           add(InlineKeyboardButton(f'Удалить заявку', callback_data=f'sdel{order_info[0]}')))
+    conn.commit()
+
+
+# delete user's order button
+async def delete_order_button(callback):
+    await callback.message.delete()
+    await bot.answer_callback_query(callback.id)
+    cur.execute("""
+                DELETE
+                FROM orders_data
+                WHERE order_id = %s
+                """, (callback.data[4:],))
+    await bot.send_message(callback.from_user.id, f'Заявка №{callback.data[4:]} успешна отменена')
+
+    conn.commit()
+
+
+# check all orders
+async def all_orders(callback, x):
+    await callback.message.delete()
+    await bot.answer_callback_query(callback.id)
+    cur.execute("""
+                SELECT *
+                FROM orders_data
+                WHERE buy_or_sell = %s
+                """, (x,))
+    data = cur.fetchall()
+    await bot.send_message(callback.from_user.id, 'Список заявок: ',
+                           reply_markup=client_kb.gen_inline_kb_my_orders(data))
+    conn.commit()
