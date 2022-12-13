@@ -154,13 +154,13 @@ async def sql_add_user_id2(callback):
                 UPDATE orders_data
                 SET user_id2 = %s
                 WHERE order_id = %s
-                """, (callback.from_user.id, callback.data[6:]))
-
+                """, (callback.from_user.id, callback.data[5:]))
+    conn.commit()
     cur.execute("""
-                SELECT user_id
+                SELECT *
                 FROM orders_data
                 WHERE order_id = %s
-                """, (callback.data[6:],))
+                """, (callback.data[5:],))
     for ret in cur.fetchall():
-        return ret
+        return ret[1]
     conn.commit()
