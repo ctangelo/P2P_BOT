@@ -1,4 +1,6 @@
 from aiogram import types, Dispatcher
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+
 from bot.keyboard import kb_client, client_kb
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
@@ -59,7 +61,7 @@ async def add_sell_usdt_amount(message: types.Message, state: FSMContext):
 
 # add buy order to database
 async def add_buy_order(callback: types.CallbackQuery):
-    await FSMAddUserOrder.usdt_amount.set()
+    await FSMAddUserOrder.vst_amount.set()
     await callback.message.answer('Сколько VST хотите купить?')
 
 
@@ -148,15 +150,15 @@ async def peer_to_peer(message: types.Message):
 # inline button 'buy'
 async def buy_vst(callback: types.CallbackQuery):
     await callback.message.delete()
-    await callback.message.answer("Купить VST \n\nЗдесь вы можете посмотреть список всех "
-                                  "активных объявлений или создать свое", reply_markup=urlkb_4)
+    await callback.message.answer("🔁 *Peer-to-peer обмен*\n\nКупить VST \n\nЗдесь вы можете посмотреть список всех "
+                                  "активных объявлений или создать свое", parse_mode="Markdown", reply_markup=urlkb_4)
 
 
 # inline button 'sell'
 async def sell_vst(callback: types.CallbackQuery):
     await callback.message.delete()
-    await callback.message.answer("Продать VST \n\nЗдесь вы можете посмотреть список всех "
-                                  "активных объявлений или создать свое", reply_markup=urlkb_5)
+    await callback.message.answer("🔁 *Peer-to-peer обмен*\n\nПродать VST \n\nЗдесь вы можете посмотреть список всех "
+                                  "активных объявлений или создать свое", parse_mode="Markdown", reply_markup=urlkb_5)
 
 
 # show all user's orders
@@ -182,6 +184,20 @@ async def check_all_orders(callback: types.CallbackQuery):
         await bot_db.all_orders(callback, 1)
 
 
+# Approve order to buy/sell
+async def select_order(callback: types.CallbackQuery):
+    await bot_db.one_order_btn(callback)
+
+
+async def approve_order(callback: types.CallbackQuery):
+    await callback.message.answer('Ожидайте ответа от второго юзера')
+    user_id = await bot_db.sql_add_user_id2(callback)
+
+    await bot.send_message(user_id, 'Вашу заявку выбрали, готовы приступить к сделке?',
+                           reply_markup=InlineKeyboardMarkup().
+                           add(InlineKeyboardButton(f'Готов', callback_data=f'ready{callback.data[0]}')))
+
+
 def register_client_handler(dp: Dispatcher):
     dp.register_message_handler(message_start, commands=['start'])
     dp.register_message_handler(message_wallet, lambda message: message.text.startswith('💼 Кошелек'))
@@ -204,3 +220,5 @@ def register_client_handler(dp: Dispatcher):
     dp.register_message_handler(add_sell_usdt_amount, state=FSMAddSellOrder.usdt_amount)
     dp.register_callback_query_handler(push_own_order_button, lambda x: x.data and x.data.startswith('sbuy'))
     dp.register_callback_query_handler(check_all_orders, lambda x: x.data and x.data.startswith('check_'))
+    dp.register_callback_query_handler(select_order, lambda x: x.data and x.data.startswith('select'))
+    dp.register_callback_query_handler(approve_order, lambda x: x.data and x.data.startswith('order'))

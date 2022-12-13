@@ -1,3 +1,5 @@
+import types
+
 import psycopg2
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from dispatcher import bot, dp
@@ -120,9 +122,45 @@ async def all_orders(callback, x):
     cur.execute("""
                 SELECT *
                 FROM orders_data
-                WHERE buy_or_sell = %s
-                """, (x,))
+                WHERE buy_or_sell = %s and user_id <> %s
+                """, (x, callback.from_user.id))
     data = cur.fetchall()
     await bot.send_message(callback.from_user.id, 'Список заявок: ',
-                           reply_markup=client_kb.gen_inline_kb_my_orders(data))
+                           reply_markup=client_kb.gen_inline_kb_all_orders(data))
+    conn.commit()
+
+
+# order inline button
+async def one_order_btn(callback):
+    dict_orders = {1: 'Покупка', 0: 'Продажа'}
+    await callback.message.delete()
+    await bot.answer_callback_query(callback.id)
+    cur.execute("""
+                    SELECT *
+                    FROM orders_data
+                    WHERE order_id = %s
+                    """, (callback.data[6:],))
+    order_info = cur.fetchone()
+
+    await bot.send_message(callback.from_user.id, f'Заявка №{order_info[0]} на {dict_orders[order_info[2]]} '
+                                                  f'{order_info[4]} VST '
+                                                  f'за {order_info[3]} USDT', reply_markup=InlineKeyboardMarkup().
+                           add(InlineKeyboardButton(f'Принять заявку', callback_data=f'order{order_info[0]}')))
+    conn.commit()
+
+
+async def sql_add_user_id2(callback):
+    cur.execute("""
+                UPDATE orders_data
+                SET user_id2 = %s
+                WHERE order_id = %s
+                """, (callback.from_user.id, callback.data[6:]))
+
+    cur.execute("""
+                SELECT user_id
+                FROM orders_data
+                WHERE order_id = %s
+                """, (callback.data[6:],))
+    for ret in cur.fetchall():
+        return ret
     conn.commit()
