@@ -145,7 +145,7 @@ async def one_order_btn(callback):
     await bot.send_message(callback.from_user.id, f'Заявка №{order_info[0]} на {dict_orders[order_info[2]]} '
                                                   f'{order_info[4]} VST '
                                                   f'за {order_info[3]} USDT', reply_markup=InlineKeyboardMarkup().
-                           add(InlineKeyboardButton(f'Принять заявку', callback_data=f'order{order_info[0]}')))
+                           add(InlineKeyboardButton(f'Принять заявку', callback_data=f'order1{order_info[0]}')))
     conn.commit()
 
 
@@ -154,13 +154,13 @@ async def sql_add_user_id2(callback):
                 UPDATE orders_data
                 SET user_id2 = %s
                 WHERE order_id = %s
-                """, (callback.from_user.id, callback.data[5:]))
+                """, (callback.from_user.id, callback.data[6:]))
     conn.commit()
     cur.execute("""
                 SELECT *
                 FROM orders_data
                 WHERE order_id = %s
-                """, (callback.data[5:],))
+                """, (callback.data[6:],))
     for ret in cur.fetchall():
         return ret[1]
     conn.commit()

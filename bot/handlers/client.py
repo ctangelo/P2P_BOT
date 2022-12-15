@@ -193,9 +193,35 @@ async def approve_order(callback: types.CallbackQuery):
     await callback.message.answer('Ожидайте ответа от второго юзера')
     user_id = await bot_db.sql_add_user_id2(callback)
 
-    await bot.send_message(user_id, 'Вашу заявку выбрали, готовы приступить к сделке?',
+    await bot.send_message(user_id, f'Вашу заявку №{callback.data[6:]} выбрали, готовы приступить к сделке?',
                            reply_markup=InlineKeyboardMarkup().
-                           add(InlineKeyboardButton(f'Готов', callback_data=f'ready{callback.data[0]}')))
+                           add(InlineKeyboardButton(f'Готов', callback_data=f'order_ready{callback.data[6:]}')))
+
+
+async def order_ready(callback: types.CallbackQuery):
+    # сделать чтоб ready_user_id = True
+    pass
+    # взять данные из БД сколько и чего надо перевести
+    await callback.message.answer('Переводите деньги', reply_markup=InlineKeyboardMarkup().
+                                  add(InlineKeyboardButton(f'Перевел', callback_data=f'pay_order/{callback.data[6:]}/'
+                                                                                     f'{callback.from_user.id}')))
+
+    # взять user_id2
+    user_id2 = pass
+    # взять данные из БД сколько и чего надо перевести
+    await bot.send_message(user_id2, 'Переводите деньги', reply_markup=InlineKeyboardMarkup().
+                           add(InlineKeyboardButton(f'Перевел', callback_data=f'pay_order/{callback.data[6:]}/'
+                                                                              f'{user_id2}')))
+
+
+# ловим хендлер из пред функции
+async def check_pay(callback: types.CallbackQuery):
+# делаем сплит от callback.data, чтоб знать ордер и юзер айди
+# перевести оплату от юзера в True
+# проверка оба ли юзера оплатили из БД
+# если да то отправляем обоим сообщние (что оплата поступит в течении 2-5 минут)
+# если нет то отправляем сообщение, что ождаем оплату от второго юзера
+# удаляем ордер из БД
 
 
 def register_client_handler(dp: Dispatcher):
@@ -221,4 +247,5 @@ def register_client_handler(dp: Dispatcher):
     dp.register_callback_query_handler(push_own_order_button, lambda x: x.data and x.data.startswith('sbuy'))
     dp.register_callback_query_handler(check_all_orders, lambda x: x.data and x.data.startswith('check_'))
     dp.register_callback_query_handler(select_order, lambda x: x.data and x.data.startswith('select'))
-    dp.register_callback_query_handler(approve_order, lambda x: x.data and x.data.startswith('order'))
+    dp.register_callback_query_handler(approve_order, lambda x: x.data and x.data.startswith('order1'))
+    # dp.register_callback_query_handler(order_ready, lambda x: x.data and x.data.startswith('order_ready'))
