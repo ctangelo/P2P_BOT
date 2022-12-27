@@ -29,15 +29,17 @@ urlkb_3.add(inline_my_orders_button)
 
 
 urlkb_4 = InlineKeyboardMarkup(row_width=1)
-inline_add_buy_order_button = InlineKeyboardButton('🖋 Создать объявление о покупке', callback_data='add_buy_order')
-inline_see_sell_orders = InlineKeyboardButton('Посмотреть объявления о покупке', callback_data='check_buy_orders')
-urlkb_4.row(inline_add_buy_order_button, inline_see_sell_orders)
+inline_add_buy_order_button = InlineKeyboardButton('🖋 Создать объявление', callback_data='add_buy_order')
+inline_see_sell_orders = InlineKeyboardButton('📈 Посмотреть объявления о покупке', callback_data='check_buy_orders')
+inline_back_btn = InlineKeyboardButton('◀️ Назад', callback_data='back_to_menu')
+urlkb_4.add(inline_add_buy_order_button, inline_see_sell_orders, inline_back_btn)
 
 
 urlkb_5 = InlineKeyboardMarkup(row_width=1)
-inline_add_sell_order_button = InlineKeyboardButton('🖋 Создать объявление на продажу', callback_data='add_sell_order')
-inline_see_buy_orders = InlineKeyboardButton('Посмотреть объявления на продажу', callback_data='check_sell_orders')
-urlkb_5.row(inline_add_sell_order_button, inline_see_buy_orders)
+inline_add_sell_order_button = InlineKeyboardButton('🖋 Создать объявление', callback_data='add_sell_order')
+inline_see_buy_orders = InlineKeyboardButton('📉 Посмотреть объявления на продажу', callback_data='check_sell_orders')
+inline_back_btn = InlineKeyboardButton('◀️ Назад', callback_data='back_to_menu')
+urlkb_5.add(inline_add_sell_order_button, inline_see_buy_orders, inline_back_btn)
 
 
 def gen_inline_kb_my_orders(data):

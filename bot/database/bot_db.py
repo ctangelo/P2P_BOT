@@ -60,6 +60,17 @@ async def is_user_id_in_data(message):
     conn.commit()
 
 
+# count user's orders
+async def sql_count_user_orders(callback):
+    with conn:
+        cur.execute("""
+                    SELECT COUNT(user_id)
+                    FROM orders_data
+                    WHERE user_id = %s
+                    """, (callback.from_user.id, ))
+        return cur.fetchone()
+
+
 # add buy order to database
 async def sql_add_order(state):
     async with state.proxy() as data:
@@ -80,7 +91,8 @@ async def sql_read_own_orders(message):
                 """, (message.from_user.id,))
     data = cur.fetchall()
     await bot.send_message(message.from_user.id, 'Список ваших заявок: ',
-                           reply_markup=client_kb.gen_inline_kb_my_orders(data))
+                           reply_markup=client_kb.gen_inline_kb_my_orders(data).add
+                           (InlineKeyboardButton('◀️ Назад', callback_data='back_to_menu')))
     conn.commit()
 
 
@@ -103,20 +115,19 @@ async def order_push_button(callback):
 
 # delete user's order button
 async def delete_order_button(callback):
-    await callback.message.delete()
+    # await callback.message.delete()
     await bot.answer_callback_query(callback.id)
-    cur.execute("""
-                DELETE
-                FROM orders_data
-                WHERE order_id = %s
-                """, (callback.data[4:],))
-    await bot.send_message(callback.from_user.id, f'Заявка №{callback.data[4:]} успешна отменена')
-
-    conn.commit()
+    with conn:
+        cur.execute("""
+                    DELETE
+                    FROM orders_data
+                    WHERE order_id = %s
+                    """, (callback.data[4:],))
 
 
 # check all orders
 async def all_orders(callback, x):
+    dict_orders = {0: 'покупку', 1: 'продажу'}
     await callback.message.delete()
     await bot.answer_callback_query(callback.id)
     cur.execute("""
@@ -125,28 +136,26 @@ async def all_orders(callback, x):
                 WHERE buy_or_sell = %s and user_id <> %s
                 """, (x, callback.from_user.id))
     data = cur.fetchall()
-    await bot.send_message(callback.from_user.id, 'Список заявок: ',
+    await bot.send_message(callback.from_user.id, f'🔁 *Peer-to-peer обмен*\n\nЗдесь отображен список всех доступных '
+                                                  f'объявлений на {dict_orders[x]} VST:\n'
+                                                  f'Выберите подходящее объявление и откройте сделку.',
+                           parse_mode="Markdown",
                            reply_markup=client_kb.gen_inline_kb_all_orders(data))
     conn.commit()
 
 
 # order inline button
-async def one_order_btn(callback):
-    dict_orders = {1: 'Покупка', 0: 'Продажа'}
+async def one_order_btn(callback, callback_data):
     await callback.message.delete()
     await bot.answer_callback_query(callback.id)
-    cur.execute("""
-                    SELECT *
-                    FROM orders_data
-                    WHERE order_id = %s
-                    """, (callback.data[6:],))
-    order_info = cur.fetchone()
+    with conn:
+        cur.execute("""
+                        SELECT *
+                        FROM orders_data
+                        WHERE order_id = %s
+                        """, (callback_data,))
 
-    await bot.send_message(callback.from_user.id, f'Заявка №{order_info[0]} на {dict_orders[order_info[2]]} '
-                                                  f'{order_info[4]} VST '
-                                                  f'за {order_info[3]} USDT', reply_markup=InlineKeyboardMarkup().
-                           add(InlineKeyboardButton(f'Принять заявку', callback_data=f'order1{order_info[0]}')))
-    conn.commit()
+        return cur.fetchone()
 
 
 async def sql_add_user_id2(callback):
@@ -164,3 +173,90 @@ async def sql_add_user_id2(callback):
     for ret in cur.fetchall():
         return ret[1]
     conn.commit()
+
+
+async def sql_change_data_1(callback):
+    with conn:
+        cur.execute("""
+                    UPDATE orders_data
+                    SET ready_user_id = True
+                    WHERE order_id = %s
+                    """, (callback.data[11:], ))
+
+
+async def sql_change_data_2(callback):
+    with conn:
+        cur.execute("""
+                    UPDATE orders_data
+                    SET pay_from_user_id = True
+                    WHERE order_id = %s
+                    """, (callback, ))
+
+
+async def sql_change_data_3(callback):
+    with conn:
+        cur.execute("""
+                    UPDATE orders_data
+                    SET pay_from_user_id2 = True
+                    WHERE order_id = %s
+                    """, (callback, ))
+
+
+async def sql_check_pay(callback):
+    with conn:
+        cur.execute("""
+                    SELECT pay_from_user_id, pay_from_user_id2
+                    FROM orders_data
+                    WHERE order_id = %s
+                    """, (callback, ))
+        return cur.fetchone()
+
+
+async def sql_delete_order(callback):
+    with conn:
+        cur.execute("""
+                    DELETE
+                    FROM orders_data
+                    WHERE order_id = %s
+                    """, (callback, ))
+
+
+# order data
+async def sql_order_data(callback):
+    await bot.answer_callback_query(callback.id)
+    with conn:
+        cur.execute("""
+                        SELECT *
+                        FROM orders_data
+                        WHERE order_id = %s and user_id = %s
+                        """, (callback.data[11:], callback.from_user.id))
+        return cur.fetchone()
+
+
+async def sql_cancel_order(callback):
+    with conn:
+        cur.execute("""
+                    UPDATE orders_data
+                    SET user_id2 = NULL
+                    WHERE order_id = %s
+                    """, (callback.data[12:], ))
+
+
+async def sql_find_user_id2(callback):
+    with conn:
+        cur.execute("""
+                    SELECT *
+                    FROM orders_data
+                    WHERE order_id = %s and user_id = %s
+                    """, (callback.data[12:], callback.from_user.id))
+        return cur.fetchone()
+
+
+async def sql_user_data(callback):
+    with conn:
+        cur.execute("""
+                    SELECT *
+                    FROM user_data
+                    WHERE user_id = %s
+                    """, (callback, ))
+        return cur.fetchone()
