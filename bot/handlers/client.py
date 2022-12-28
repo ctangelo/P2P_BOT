@@ -43,7 +43,8 @@ async def add_sell_order(callback: types.CallbackQuery):
         await FSMAddSellOrder.vst_amount.set()
         await callback.message.answer('Сколько VST хотите продать?')
     else:
-        await callback.message.answer('Извините, вы можете добавить максимум 5 ордеров на покупку/продажу.')
+        await callback.message.answer('Извините, но вы можете добавить максимум 5 заявок на покупку/продажу. '
+                                      'Удалить заявку вы можете в разделе "Мои объявления".')
 
 
 # dp.register_message_handler(add_sell_vst_amount, state=FSMAddSellOrder.vst_amount)
@@ -61,7 +62,7 @@ async def add_sell_vst_amount(message: types.Message, state: FSMContext):
 async def add_sell_usdt_amount(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['usdt_amount'] = message.text
-    await message.reply('ОРДЕР НА ПРОДАЖУ VST ДОБАВЛЕН')
+    await message.reply(f'Ваша заявка на продажу {data["vst_amount"]} VST принята')
     await bot_db.sql_add_order(state)
     await state.finish()
 
@@ -74,7 +75,8 @@ async def add_buy_order(callback: types.CallbackQuery):
         await FSMAddUserOrder.vst_amount.set()
         await callback.message.answer('Сколько VST хотите купить?')
     else:
-        await callback.message.answer('Извините, вы можете добавить максимум 5 ордеров на покупку/продажу.')
+        await callback.message.answer('Извините, но вы можете добавить максимум 5 заявок на покупку/продажу. '
+                                      'Удалить заявку вы можете в разделе "Мои объявления".')
 
 
 # dp.register_message_handler(add_usdt_amount, state=FSMAddUserOrder.vst_amount)
@@ -92,7 +94,7 @@ async def add_usdt_amount(message: types.Message, state: FSMContext):
 async def add_vst_amount(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['usdt_amount'] = message.text
-    await message.reply('ОРДЕР НА ПОКУПКУ VST ДОБАВЛЕН')
+    await message.reply(f'Ваша заявка на покупку {data["vst_amount"]} VST принята')
     await bot_db.sql_add_order(state)
     await state.finish()
 
@@ -222,9 +224,9 @@ async def push_own_order_button(callback: types.CallbackQuery):
 # dp.register_callback_query_handler(check_all_orders, lambda x: x.data and x.data.startswith('check_'))
 async def check_all_orders(callback: types.CallbackQuery):
     if 'sell' in callback.data:
-        await bot_db.all_orders(callback, 0)
-    else:
         await bot_db.all_orders(callback, 1)
+    else:
+        await bot_db.all_orders(callback, 0)
 
 
 # Approve order to buy/sell
