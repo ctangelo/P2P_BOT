@@ -232,7 +232,7 @@ async def check_all_orders(callback: types.CallbackQuery):
 # Approve order to buy/sell
 # dp.register_callback_query_handler(select_order, lambda x: x.data and x.data.startswith('select'))
 async def select_order(callback: types.CallbackQuery):
-    dict_orders = {1: 'Покупка', 0: 'Продажа'}
+    dict_orders = {1: 'продажу', 0: 'покупку'}
     order_info = await bot_db.one_order_btn(callback, callback.data[6:])
 
     await bot.send_message(callback.from_user.id, f'Заявка №{order_info[0]} на {dict_orders[order_info[2]]} '
@@ -268,34 +268,28 @@ async def cancel_order(callback: types.CallbackQuery):
 async def go_to_menu(callback: types.CallbackQuery):
     await callback.message.delete()
     await callback.message.answer("🔁 *Peer-to-peer обмен*\n\nПокупайте и продавайте VST удобным способом.\n\n"
-                         "Выберите направление для просмотра объявлений на покупку и продажу VST.",
-                         parse_mode="Markdown", reply_markup=urlkb_3)
-
-
-# dp.register_callback_query_handler(garant_ready, lambda x: x.data and x.data.startswith('order_ready'))
-# async def garant_ready(callback: types.CallbackQuery):
-#     await bot_db.sql_change_data_1(callback)
-#     # отправляем запрос гаранту, может ли он щас принять заявку
-#     await bot.send_message(245955512, f'пользователи готовы приступить к сделке, начнем?',
-#                            reply_markup=InlineKeyboardMarkup().
-#                            add(InlineKeyboardButton(f'Готов', callback_data=f'garant_ready{callback.data[6:]}')))
+                                  "Выберите направление для просмотра объявлений на покупку и продажу VST.",
+                                  parse_mode="Markdown", reply_markup=urlkb_3)
 
 
 # dp.register_callback_query_handler(order_ready, lambda x: x.data and x.data.startswith('order_ready'))
 async def order_ready(callback: types.CallbackQuery):
     data = await bot_db.sql_order_data(callback)
     if data[2] == 1:
-        await callback.message.answer(f'Переводите {data[3]} USDT на\nTestBinanceID', reply_markup=InlineKeyboardMarkup().
-                                      add(InlineKeyboardButton(f'Перевел', callback_data=f'pay_order/{callback.data[11:]}/'
-                                                                                         f'{callback.from_user.id}/{1}')))
+        await callback.message.answer(f'Переводите {data[3]} USDT на\nTestBinanceID',
+                                      reply_markup=InlineKeyboardMarkup().
+                                      add(InlineKeyboardButton(f'Перевел',
+                                                               callback_data=f'pay_order/{callback.data[11:]}/'
+                                                                             f'{callback.from_user.id}/{1}')))
         await bot.send_message(data[5], f'Переводите {data[4]} VST на\nTestVST', reply_markup=InlineKeyboardMarkup().
                                add(InlineKeyboardButton(f'Перевел', callback_data=f'pay_order/{callback.data[11:]}/'
                                                                                   f'{data[5]}/{2}')))
     else:
         await callback.message.answer(f'Переводите {data[4]} VST на\nTestVST', reply_markup=InlineKeyboardMarkup().
-                                      add(InlineKeyboardButton(f'Перевел', callback_data=f'pay_order/{callback.data[11:]}/'
-                                                                                         f'{callback.from_user.id}/{1}')))
-        await bot.send_message(data[5], f'Переводите {data[3]} USDT на\nTestVST', reply_markup=InlineKeyboardMarkup().
+                                      add(
+            InlineKeyboardButton(f'Перевел', callback_data=f'pay_order/{callback.data[11:]}/'
+                                                           f'{callback.from_user.id}/{1}')))
+        await bot.send_message(data[5], f'Переводите {data[3]} USDT на\nTestBinanceID', reply_markup=InlineKeyboardMarkup().
                                add(InlineKeyboardButton(f'Перевел', callback_data=f'pay_order/{callback.data[11:]}/'
                                                                                   f'{data[5]}/{2}')))
 
@@ -305,24 +299,46 @@ async def check_pay(callback: types.CallbackQuery):
     data = callback.data.split(sep='/')
     if data[-1] == '2':
         await bot_db.sql_change_data_2(data[1])
+
     elif data[-1] == '1':
         await bot_db.sql_change_data_3(data[1])
+
     check = await bot_db.sql_check_pay(data[1])
+
     if check[0] and check[1]:
+
+        user_data = []
         order_data = await bot_db.sql_order_data(data[1])
-        user_data = order_data[1] + order_data[5]
+        user_data.append(order_data[1])
+        user_data.append(order_data[5])
 
-        await bot.send_message(order_data[1], 'Ожидайте перевод от Гаранта, это займет не больше 5 минут')
-        await bot.send_message(order_data[5], 'Ожидайте перевод от Гаранта, это займет не больше 5 минут')
+        if data[-1] == '3':
+            await bot.send_message(order_data[1], 'Перевод выполнен')
+            await bot.send_message(order_data[5], 'Перевод выполнен')
+            # await bot_db.sql_delete_order(data[1])
 
-        if order_data[2] == 1:
-            requisites = bot_db.sql_user_data(user_data[1])
-            await bot.send_message(245955512, f'Оба пользователя подтвердили оплату\nПереведите {requisites[2]}')
+        else:
+            await bot.send_message(order_data[1], 'Ожидайте перевод от Гаранта, это займет не больше 5 минут')
+            await bot.send_message(order_data[5], 'Ожидайте перевод от Гаранта, это займет не больше 5 минут')
 
+            if order_data[2] == 1:
+                requisites_1 = await bot_db.sql_user_data(user_data[0])
+                requisites_2 = await bot_db.sql_user_data(user_data[1])
+                await bot.send_message(245955512,
+                                       f'Оба пользователя подтвердили оплату\nПереведите {order_data[3]} VST на счет: '
+                                       f'{requisites_1[2]}\nПереведите {order_data[4]} USDT на счет: '
+                                       f'{requisites_2[3]}', reply_markup=InlineKeyboardMarkup().
+                                       add(InlineKeyboardButton(f'Перевел', callback_data=f'pay_order/{order_data[0]}/3')))
 
+            elif order_data[2] == 0:
+                requisites_1 = await bot_db.sql_user_data(user_data[0])
+                requisites_2 = await bot_db.sql_user_data(user_data[1])
+                await bot.send_message(245955512,
+                                       f'Оба пользователя подтвердили оплату\nПереведите {order_data[4]} USDT на счет: '
+                                       f'{requisites_1[3]}\nПереведите {order_data[3]} VST на счет: '
+                                       f'{requisites_2[2]}', reply_markup=InlineKeyboardMarkup().
+                                       add(InlineKeyboardButton(f'Перевел', callback_data=f'pay_order/{order_data[0]}/3')))
 
-
-        await bot_db.sql_delete_order(data[1])
     else:
         await callback.message.answer('Ожидаем оплату от второго пользователя')
 

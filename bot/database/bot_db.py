@@ -223,13 +223,13 @@ async def sql_delete_order(callback):
 
 # order data
 async def sql_order_data(callback):
-    await bot.answer_callback_query(callback.id)
+    # await bot.answer_callback_query(callback.id)
     with conn:
         cur.execute("""
                         SELECT *
                         FROM orders_data
-                        WHERE order_id = %s and user_id = %s
-                        """, (callback.data[11:], callback.from_user.id))
+                        WHERE order_id = %s
+                        """, (callback, ))
         return cur.fetchone()
 
 
