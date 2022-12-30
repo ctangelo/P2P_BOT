@@ -87,7 +87,7 @@ async def sql_read_own_orders(message):
     cur.execute("""
                 SELECT *
                 FROM orders_data
-                WHERE user_id = %s
+                WHERE user_id = %s and garant_pay = false
                 """, (message.from_user.id,))
     data = cur.fetchall()
     await bot.send_message(message.from_user.id, 'Список ваших заявок: ',
@@ -107,9 +107,10 @@ async def order_push_button(callback):
                 """, (callback.data[4:],))
     order_info = cur.fetchone()
 
-    await bot.send_message(callback.from_user.id, f'Заявка №{order_info[0]} на покупку {order_info[4]} VST '
-                                                  f'за {order_info[3]} USDT', reply_markup=InlineKeyboardMarkup().
-                           add(InlineKeyboardButton(f'Удалить заявку', callback_data=f'sdel{order_info[0]}')))
+    await bot.send_message(callback.from_user.id, f'Заявка №{order_info[0]} на покупку {order_info[3]} VST '
+                                                  f'за {order_info[4]} USDT', reply_markup=InlineKeyboardMarkup().
+                           add(InlineKeyboardButton(f'Удалить заявку', callback_data=f'sdel{order_info[0]}')).
+                           add(InlineKeyboardButton('◀️ Назад', callback_data='my_orders')))
     conn.commit()
 
 
@@ -125,36 +126,14 @@ async def delete_order_button(callback):
                     """, (callback.data[4:],))
 
 
-# check all orders
-async def all_orders(callback, x):
-    dict_orders = {0: 'покупку', 1: 'продажу'}
-    await callback.message.delete()
-    await bot.answer_callback_query(callback.id)
-    cur.execute("""
-                SELECT *
-                FROM orders_data
-                WHERE buy_or_sell = %s and user_id <> %s
-                """, (x, callback.from_user.id))
-    data = cur.fetchall()
-    await bot.send_message(callback.from_user.id, f'🔁 *Peer-to-peer обмен*\n\nЗдесь отображен список всех доступных '
-                                                  f'объявлений на {dict_orders[x]} VST:\n'
-                                                  f'Выберите подходящее объявление и откройте сделку.',
-                           parse_mode="Markdown",
-                           reply_markup=client_kb.gen_inline_kb_all_orders(data))
-    conn.commit()
-
-
 # order inline button
-async def one_order_btn(callback, callback_data):
-    await callback.message.delete()
-    await bot.answer_callback_query(callback.id)
+async def one_order_btn(callback):
     with conn:
         cur.execute("""
                         SELECT *
                         FROM orders_data
                         WHERE order_id = %s
-                        """, (callback_data,))
-
+                        """, (callback,))
         return cur.fetchone()
 
 
@@ -260,3 +239,22 @@ async def sql_user_data(callback):
                     WHERE user_id = %s
                     """, (callback, ))
         return cur.fetchone()
+
+
+async def sql_set_garant_pay(callback):
+    with conn:
+        cur.execute("""
+                    UPDATE orders_data
+                    SET garant_pay = true
+                    WHERE order_id = %s
+                    """, (callback, ))
+
+
+async def sql_all_orders(callback, x):
+    with conn:
+        cur.execute("""
+                    SELECT *
+                    FROM orders_data
+                    WHERE buy_or_sell = %s and user_id <> %s and ready_user_id = false
+                    """, (x, callback))
+        return cur.fetchall()

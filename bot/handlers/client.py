@@ -7,7 +7,7 @@ from database import bot_db
 import random
 from dispatcher import bot
 
-from bot.keyboard.client_kb import urlkb_3, urlkb_4, urlkb_5, urlkb_2, urlkb
+from bot.keyboard.client_kb import urlkb_3, urlkb_2, urlkb, urlkb4, urlkb5
 
 
 # for add user info to database
@@ -31,7 +31,8 @@ class FSMAddSellOrder(StatesGroup):
 
 # dp.register_message_handler(message_start, commands=['start'])
 async def message_start(message: types.Message):
-    await message.answer('Привет! Я бот обменник! Чтоб узнать больше о функционале, нажми HELP',
+    await message.answer('Привет! Я бот обменник, помогу вам обменять VST/USDT\nПеред тем как приступить к обмену - '
+                         'добавь свои кошельки.',
                          reply_markup=kb_client)
 
 
@@ -129,7 +130,7 @@ async def load_name(message: types.Message, state: FSMContext):
         data['user_id'] = message.from_user.id
         data['name'] = message.text
     await FSMUserInfo.next()
-    await message.reply('Введите ваш VST счет:', reply_markup=InlineKeyboardMarkup().
+    await message.reply('Введите ваш VST счет\nПример: VST-00000000-000000-000', reply_markup=InlineKeyboardMarkup().
                         add(InlineKeyboardButton(f'Отмена', callback_data=f'cancel_state')))
 
 
@@ -138,7 +139,7 @@ async def load_vst(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['VST'] = message.text
     await FSMUserInfo.next()
-    await message.reply('Введите ваш Binance ID:', reply_markup=InlineKeyboardMarkup().
+    await message.reply('Введите ваш Binance ID:\nПример: 000000', reply_markup=InlineKeyboardMarkup().
                         add(InlineKeyboardButton(f'Отмена', callback_data=f'cancel_state')))
 
 
@@ -177,7 +178,7 @@ async def del_data(callback: types.CallbackQuery):
 
 
 # button P2P
-# dp.register_message_handler(peer_to_peer, lambda message: message.text.startswith('🔁 P2P Обмен'))
+# dp.message_handler(peer_to_peer, lambda message: message.text.startswith('🔁 P2P Обмен'))
 async def peer_to_peer(message: types.Message):
     await message.answer("🔁 *Peer-to-peer обмен*\n\nПокупайте и продавайте VST удобным способом.\n\n"
                          "Выберите направление для просмотра объявлений на покупку и продажу VST.",
@@ -185,29 +186,31 @@ async def peer_to_peer(message: types.Message):
 
 
 # inline button 'buy'
-# dp.register_callback_query_handler(buy_vst, text=['buy_vst'])
+# dp.callback_query_handler(buy_vst, text=['buy_vst'])
 async def buy_vst(callback: types.CallbackQuery):
     await callback.message.delete()
     await callback.message.answer("🔁 *Peer-to-peer обмен*\n\nКупить VST \n\nЗдесь вы можете посмотреть список всех "
-                                  "активных объявлений или создать свое", parse_mode="Markdown", reply_markup=urlkb_4)
+                                  "активных объявлений или создать свое", parse_mode="Markdown",
+                                  reply_markup=urlkb4(callback))
 
 
 # inline button 'sell'
-# dp.register_callback_query_handler(sell_vst, text=['sell_vst'])
+# dp.callback_query_handler(sell_vst, text=['sell_vst'])
 async def sell_vst(callback: types.CallbackQuery):
     await callback.message.delete()
     await callback.message.answer("🔁 *Peer-to-peer обмен*\n\nПродать VST \n\nЗдесь вы можете посмотреть список всех "
-                                  "активных объявлений или создать свое", parse_mode="Markdown", reply_markup=urlkb_5)
+                                  "активных объявлений или создать свое", parse_mode="Markdown",
+                                  reply_markup=urlkb5(callback))
 
 
 # show all user's orders
-# dp.register_callback_query_handler(read_own_orders, text=['my_orders'])
+# dp.callback_query_handler(read_own_orders, text=['my_orders'])
 async def read_own_orders(callback: types.CallbackQuery):
     await bot_db.sql_read_own_orders(callback)
 
 
 # inline button delete order
-# dp.register_callback_query_handler(del_button, lambda x: x.data and x.data.startswith('sdel'))
+# dp.callback_query_handler(del_button, lambda x: x.data and x.data.startswith('sdel'))
 async def del_button(callback: types.CallbackQuery):
     await bot_db.delete_order_button(callback)
     await callback.message.answer(f'Заявка №{callback.data[4:]} успешна отменена')
@@ -215,30 +218,45 @@ async def del_button(callback: types.CallbackQuery):
 
 
 # We catch clicking on the inline button with our own order
-# dp.register_callback_query_handler(push_own_order_button, lambda x: x.data and x.data.startswith('sbuy'))
+# dp.callback_query_handler(push_own_order_button, lambda x: x.data and x.data.startswith('sbuy'))
 async def push_own_order_button(callback: types.CallbackQuery):
     await bot_db.order_push_button(callback)
 
 
-# Check all orders buy/sell
-# dp.register_callback_query_handler(check_all_orders, lambda x: x.data and x.data.startswith('check_'))
-async def check_all_orders(callback: types.CallbackQuery):
-    if 'sell' in callback.data:
-        await bot_db.all_orders(callback, 1)
-    else:
-        await bot_db.all_orders(callback, 0)
+# @dp.callback_query_handler(text_startswith="check_")
+async def all_orders_pages(callback: types.CallbackQuery):
+    dict_orders = {1: 'покупку', 0: 'продажу'}
+    data = callback.data.split(sep='/')
+    remover = int(data[1])
+    user_id = int(data[2])
+    buy_or_sell = int(data[-1])
+    await callback.message.edit_text(f'🔁 *Peer-to-peer обмен*\n\nЗдесь отображен список всех доступных объявлений на '
+                                     f'{dict_orders[buy_or_sell]} VST.\n\nВыберите подходящее объявление и откройте '
+                                     f'сделку.',
+                                     parse_mode="Markdown",
+                                     reply_markup=await client_kb.orders_swipe_fp(remover, user_id, buy_or_sell))
 
 
 # Approve order to buy/sell
 # dp.register_callback_query_handler(select_order, lambda x: x.data and x.data.startswith('select'))
 async def select_order(callback: types.CallbackQuery):
+    await callback.message.delete()
     dict_orders = {1: 'продажу', 0: 'покупку'}
-    order_info = await bot_db.one_order_btn(callback, callback.data[6:])
 
-    await bot.send_message(callback.from_user.id, f'Заявка №{order_info[0]} на {dict_orders[order_info[2]]} '
-                                                  f'{order_info[4]} VST '
-                                                  f'за {order_info[3]} USDT', reply_markup=InlineKeyboardMarkup().
-                           add(InlineKeyboardButton(f'Принять заявку', callback_data=f'order1{order_info[0]}')))
+    order_info = await bot_db.one_order_btn(callback.data.split('/')[1])
+    if order_info[2] == 0:
+        await bot.send_message(callback.from_user.id, f'Заявка №{order_info[0]} на {dict_orders[order_info[2]]} '
+                                                      f'{order_info[3]} VST '
+                                                      f'за {order_info[4]} USDT', reply_markup=InlineKeyboardMarkup().
+                               add(InlineKeyboardButton(f'Принять заявку', callback_data=f'order1{order_info[0]}')).
+                               add(InlineKeyboardButton('Назад', callback_data=f'all_orders/{0}/{callback.from_user.id}/{0}')))
+
+    elif order_info[2] == 1:
+        await bot.send_message(callback.from_user.id, f'Заявка №{order_info[0]} на {dict_orders[order_info[2]]} '
+                                                      f'{order_info[3]} VST '
+                                                      f'за {order_info[4]} USDT', reply_markup=InlineKeyboardMarkup().
+                               add(InlineKeyboardButton(f'Принять заявку', callback_data=f'order1{order_info[0]}')).
+                               add(InlineKeyboardButton('Назад', callback_data=f'all_orders/{0}/{callback.from_user.id}/{1}')))
 
 
 # dp.register_callback_query_handler(approve_order, lambda x: x.data and x.data.startswith('order1'))
@@ -274,7 +292,9 @@ async def go_to_menu(callback: types.CallbackQuery):
 
 # dp.register_callback_query_handler(order_ready, lambda x: x.data and x.data.startswith('order_ready'))
 async def order_ready(callback: types.CallbackQuery):
-    data = await bot_db.sql_order_data(callback)
+    await callback.message.delete()
+    await bot_db.sql_change_data_1(callback)
+    data = await bot_db.sql_order_data(callback.data[11:])
     if data[2] == 1:
         await callback.message.answer(f'Переводите {data[3]} USDT на\nTestBinanceID',
                                       reply_markup=InlineKeyboardMarkup().
@@ -285,11 +305,12 @@ async def order_ready(callback: types.CallbackQuery):
                                add(InlineKeyboardButton(f'Перевел', callback_data=f'pay_order/{callback.data[11:]}/'
                                                                                   f'{data[5]}/{2}')))
     else:
-        await callback.message.answer(f'Переводите {data[4]} VST на\nTestVST', reply_markup=InlineKeyboardMarkup().
+        await callback.message.answer(f'Переводите {data[3]} VST на\nTestVST', reply_markup=InlineKeyboardMarkup().
                                       add(
             InlineKeyboardButton(f'Перевел', callback_data=f'pay_order/{callback.data[11:]}/'
                                                            f'{callback.from_user.id}/{1}')))
-        await bot.send_message(data[5], f'Переводите {data[3]} USDT на\nTestBinanceID', reply_markup=InlineKeyboardMarkup().
+        await bot.send_message(data[5], f'Переводите {data[4]} USDT на\nTestBinanceID',
+                               reply_markup=InlineKeyboardMarkup().
                                add(InlineKeyboardButton(f'Перевел', callback_data=f'pay_order/{callback.data[11:]}/'
                                                                                   f'{data[5]}/{2}')))
 
@@ -315,6 +336,7 @@ async def check_pay(callback: types.CallbackQuery):
         if data[-1] == '3':
             await bot.send_message(order_data[1], 'Перевод выполнен')
             await bot.send_message(order_data[5], 'Перевод выполнен')
+            await bot_db.sql_set_garant_pay(data[1])
             # await bot_db.sql_delete_order(data[1])
 
         else:
@@ -328,7 +350,8 @@ async def check_pay(callback: types.CallbackQuery):
                                        f'Оба пользователя подтвердили оплату\nПереведите {order_data[3]} VST на счет: '
                                        f'{requisites_1[2]}\nПереведите {order_data[4]} USDT на счет: '
                                        f'{requisites_2[3]}', reply_markup=InlineKeyboardMarkup().
-                                       add(InlineKeyboardButton(f'Перевел', callback_data=f'pay_order/{order_data[0]}/3')))
+                                       add(
+                        InlineKeyboardButton(f'Перевел', callback_data=f'pay_order/{order_data[0]}/3')))
 
             elif order_data[2] == 0:
                 requisites_1 = await bot_db.sql_user_data(user_data[0])
@@ -337,7 +360,8 @@ async def check_pay(callback: types.CallbackQuery):
                                        f'Оба пользователя подтвердили оплату\nПереведите {order_data[4]} USDT на счет: '
                                        f'{requisites_1[3]}\nПереведите {order_data[3]} VST на счет: '
                                        f'{requisites_2[2]}', reply_markup=InlineKeyboardMarkup().
-                                       add(InlineKeyboardButton(f'Перевел', callback_data=f'pay_order/{order_data[0]}/3')))
+                                       add(
+                        InlineKeyboardButton(f'Перевел', callback_data=f'pay_order/{order_data[0]}/3')))
 
     else:
         await callback.message.answer('Ожидаем оплату от второго пользователя')
@@ -364,10 +388,9 @@ def register_client_handler(dp: Dispatcher):
     dp.register_message_handler(add_sell_vst_amount, state=FSMAddSellOrder.vst_amount)
     dp.register_message_handler(add_sell_usdt_amount, state=FSMAddSellOrder.usdt_amount)
     dp.register_callback_query_handler(push_own_order_button, lambda x: x.data and x.data.startswith('sbuy'))
-    dp.register_callback_query_handler(check_all_orders, lambda x: x.data and x.data.startswith('check_'))
+    dp.register_callback_query_handler(all_orders_pages, lambda x: x.data and x.data.startswith('all_orders/'))
     dp.register_callback_query_handler(select_order, lambda x: x.data and x.data.startswith('select'))
     dp.register_callback_query_handler(approve_order, lambda x: x.data and x.data.startswith('order1'))
-    # dp.register_callback_query_handler(garant_ready, lambda x: x.data and x.data.startswith('order_ready'))
     dp.register_callback_query_handler(check_pay, lambda x: x.data and x.data.startswith('pay_order/'))
     dp.register_callback_query_handler(cancel_order, lambda x: x.data and x.data.startswith('cancel_order'))
     dp.register_callback_query_handler(go_to_menu, lambda x: x.data and x.data.startswith('back_to_menu'))
