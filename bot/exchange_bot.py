@@ -9,8 +9,10 @@ async def on_startup(_):
 
 
 from handlers import client
+from handlers import admin
 
 client.register_client_handler(dp)
+admin.register_admin_handler(dp)
 
 if __name__ == '__main__':
     executor.start_polling(dp, on_startup=on_startup)

@@ -56,7 +56,7 @@ def gen_inline_kb_my_orders(data):
     urlkb_my_orders = InlineKeyboardMarkup(row_width=1)
     for i in data:
         urlkb_my_orders.add(InlineKeyboardButton(f'{dict_orders[i[2]]} {i[4]} VST за {i[3]} USDT',
-                                                 callback_data=f'sbuy {i[0]}'))
+                                                 callback_data=f'sbuy/{i[0]}'))
     return urlkb_my_orders
 
 
