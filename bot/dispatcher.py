@@ -3,7 +3,7 @@ from aiogram.dispatcher import Dispatcher
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 
 storage = MemoryStorage()
-TOKEN = '5970102419:AAGARGEl1fYwjlDCt3OoDRiKJ9SbyJHFDGQ'
+TOKEN = YOUR_TELEGRAM_TOKEN
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher(bot, storage=storage)
